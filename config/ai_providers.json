@@ -1,0 +1,28 @@
+{
+  "providers": {
+    "gemini": {
+      "name": "Google Gemini",
+      "models": {
+        "code_completion": "gemini-1.5-pro",
+        "code_explanation": "gemini-1.5-pro",
+        "code_review": "gemini-1.5-pro-002",
+        "chat": "gemini-1.5-flash"
+      },
+      "max_tokens": 8192,
+      "temperature": 0.7,
+      "rate_limit": 60
+    },
+    "openai": {
+      "name": "OpenAI",
+      "models": {
+        "code_completion": "gpt-4-turbo",
+        "code_explanation": "gpt-4",
+        "code_review": "gpt-4",
+        "chat": "gpt-3.5-turbo"
+      },
+      "max_tokens": 4096,
+      "temperature": 0.7,
+      "rate_limit": 40
+    }
+  }
+}
