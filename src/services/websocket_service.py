@@ -72,7 +72,7 @@ class WebSocketManager:
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def handle_ai_request(self, session_id: str, user_id: str, dict):
+    async def handle_ai_request(self, session_id: str, user_id: str,data: dict):
         """Handle AI request through WebSocket"""
         try:
             # Parse request

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor Clone Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 80vh;
+        }
+        .input-panel, .output-panel {
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        select, button {
+            padding: 8px 15px;
+            margin: 5px;
+            background-color: #0d7377;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #14a085;
+        }
+        .output {
+            background-color: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.connected { background-color: #1b5e20; }
+        .status.processing { background-color: #e65100; }
+        .status.error { background-color: #c62828; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Cursor Clone - AI Code Assistant</h1>
+
+    <div class="status" id="status">Connecting...</div>
+
+    <div class="container">
+        <div class="input-panel">
+            <h3>Input</h3>
+
+            <label>Task Type:</label>
+            <select id="taskType">
+                <option value="code_generation">Generate Code</option>
+                <option value="code_completion">Complete Code</option>
+                <option value="code_explanation">Explain Code</option>
+                <option value="code_review">Review Code</option>
+                <option value="chat">AI Chat</option>
+            </select>
+
+            <label>Language:</label>
+            <select id="language">
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="sql">SQL</option>
+            </select>
+
+            <label>Provider:</label>
+            <select id="provider">
+                <option value="gemini">Gemini</option>
+                <option value="openai">OpenAI</option>
+                <option value="claude">Claude</option>
+            </select>
+
+            <label>Prompt/Code:</label>
+            <textarea id="prompt" placeholder="Enter your request or code here..."></textarea>
+
+            <label>Context (optional):</label>
+            <textarea id="context" placeholder="Additional context or project details..."></textarea>
+
+            <button onclick="sendRequest()">Send Request</button>
+            <button onclick="clearOutput()">Clear Output</button>
+        </div>
+
+        <div class="output-panel">
+            <h3>AI Response</h3>
+            <div class="output" id="output">Waiting for requests...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
+
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://localhost:8000/ws/${sessionId}?user_id=developer`);
+
+            ws.onopen = function() {
+                updateStatus('Connected to Cursor Clone AI', 'connected');
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+
+            ws.onclose = function() {
+                updateStatus('Connection closed. Reconnecting...', 'error');
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = function(error) {
+                updateStatus('Connection error: ' + error, 'error');
+            };
+        }
+
+        function handleMessage(data) {
+            const output = document.getElementById('output');
+
+            switch(data.type) {
+                case 'connection_established':
+                    output.textContent += `✅ ${data.message}\n\n`;
+                    break;
+
+                case 'ai_request_received':
+                    updateStatus(`Processing ${data.task_type}...`, 'processing');
+                    output.textContent += `🤖 Processing ${data.task_type} request...\n\n`;
+                    break;
+
+                case 'ai_response':
+                    if (data.success) {
+                        updateStatus('Response received', 'connected');
+                        output.textContent += `📝 AI Response (${data.processing_time.toFixed(2)}s):\n`;
+                        output.textContent += '=' .repeat(50) + '\n';
+                        output.textContent += data.response + '\n';
+                        output.textContent += '=' .repeat(50) + '\n\n';
+                    } else {
+                        updateStatus('Error: ' + data.error_message, 'error');
+                        output.textContent += `❌ Error: ${data.error_message}\n\n`;
+                    }
+                    break;
+
+                case 'error':
+                    updateStatus('Error: ' + data.message, 'error');
+                    output.textContent += `❌ Error: ${data.message}\n\n`;
+                    break;
+            }
+
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        function sendRequest() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                updateStatus('Not connected. Please wait...', 'error');
+                return;
+            }
+
+            const taskType = document.getElementById('taskType').value;
+            const language = document.getElementById('language').value;
+            const provider = document.getElementById('provider').value;
+            const prompt = document.getElementById('prompt').value.trim();
+            const context = document.getElementById('context').value.trim();
+
+            if (!prompt) {
+                alert('Please enter a prompt or code');
+                return;
+            }
+
+            const request = {
+                type: 'ai_request',
+                task_type: taskType,
+                language: language,
+                provider: provider,
+                prompt: prompt,
+                context: context || null
+            };
+
+            ws.send(JSON.stringify(request));
+        }
+
+        function clearOutput() {
+            document.getElementById('output').textContent = 'Output cleared...\n';
+        }
+
+        // Connect on page load
+        connectWebSocket();
+
+        // Example prompts for quick testing
+        const examples = {
+            'code_generation': {
+                'python': 'Create a FastAPI application with user authentication and CRUD operations for a blog system',
+                'javascript': 'Create a React component for a responsive product card with image, title, price, and add to cart button',
+                'java': 'Create a Spring Boot REST controller for managing users with CRUD operations'
+            },
+            'code_completion': {
+                'python': 'def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:',
+                'javascript': 'function debounce(func, delay) {\n    let timeoutId;\n    return function(...args) {'
+            }
+        };
+
+        // Add example button functionality
+        document.getElementById('taskType').addEventListener('change', function() {
+            const taskType = this.value;
+            const language = document.getElementById('language').value;
+            const promptArea = document.getElementById('prompt');
+
+            if (examples[taskType] && examples[taskType][language]) {
+                promptArea.placeholder = examples[taskType][language];
+            }
+        });
+    </script>
+</body>
+</html>

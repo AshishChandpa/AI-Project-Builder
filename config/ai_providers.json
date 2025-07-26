@@ -3,10 +3,10 @@
     "gemini": {
       "name": "Google Gemini",
       "models": {
-        "code_completion": "gemini-1.5-pro",
-        "code_explanation": "gemini-1.5-pro",
+        "code_completion": "gemini-2.0-flash",
+        "code_explanation": "gemini-2.0-flash",
         "code_review": "gemini-1.5-pro-002",
-        "chat": "gemini-1.5-flash"
+        "chat": "gemini-2.0-flash"
       },
       "max_tokens": 8192,
       "temperature": 0.7,
